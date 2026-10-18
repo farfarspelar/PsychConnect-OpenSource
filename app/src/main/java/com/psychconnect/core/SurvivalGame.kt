@@ -12,14 +12,16 @@ data class SurvivalExplosion(val center: Point, val detonatesAtMs: Long, val dur
 class SurvivalGameEngine(private val random: Random = Random.Default) {
     private val projectiles = mutableListOf<SurvivalProjectile>()
     private val explosions = mutableListOf<SurvivalExplosion>()
-    private var startedAtMs = 0L
     private var initialized = false
     private var updatedAtMs = 0L
     private var hazardNowMs = 0L
+    private var activeElapsedMs = 0L
+    private var movementRemainderMs = 0.0
     private var nextProjectileAtMs = 0L
     private var nextExplosionAtMs = 0L
 
-    val elapsedMs: Long get() = (updatedAtMs - startedAtMs).coerceAtLeast(0L)
+    /** Survival score time advances only with movement-driven hazard time. */
+    val elapsedMs: Long get() = activeElapsedMs
     val hazardTimeMs: Long get() = hazardNowMs
     val level: Int get() = 1 + (elapsedMs / 20_000L).toInt()
     fun projectiles(): List<SurvivalProjectile> = projectiles.toList()
@@ -27,33 +29,37 @@ class SurvivalGameEngine(private val random: Random = Random.Default) {
 
     fun reset(nowMs: Long) {
         initialized = true
-        startedAtMs = nowMs
         updatedAtMs = nowMs
         hazardNowMs = 0L
+        activeElapsedMs = 0L
+        movementRemainderMs = 0.0
         nextProjectileAtMs = hazardNowMs + 1_700L
         nextExplosionAtMs = hazardNowMs + 3_500L
         projectiles.clear()
         explosions.clear()
     }
 
-    /** Shifts the local timeline when Android pauses the run in the background. */
+    /** Shifts the frame clock when Android pauses the run in the background. */
     fun shiftTime(deltaMs: Long) {
         if (deltaMs <= 0L) return
-        startedAtMs += deltaMs
         updatedAtMs += deltaMs
     }
 
-    /** Real time remains the score; hazard time advances in proportion to player movement. */
+    /** Both score time and hazards advance in proportion to player movement. */
     fun advance(nowMs: Long, player: Point, widthPx: Int, heightPx: Int, movementFactor:Double=1.0): Boolean {
         if (widthPx <= 0 || heightPx <= 0) return false
         if (!initialized) reset(nowMs)
         val now = nowMs.coerceAtLeast(updatedAtMs)
-        val elapsedSeconds = (now - startedAtMs) / 1_000.0
         val aspectX = widthPx.toDouble() / minOf(widthPx, heightPx)
         val aspectY = heightPx.toDouble() / minOf(widthPx, heightPx)
         val previousHazardNow=hazardNowMs
         val wallDelta=(now-updatedAtMs).coerceAtLeast(0L)
-        hazardNowMs+=(wallDelta*movementFactor.coerceIn(0.0,1.0)).toLong()
+        val activeDelta=wallDelta*movementFactor.coerceIn(0.0,1.0)+movementRemainderMs
+        val activeDeltaMs=activeDelta.toLong()
+        movementRemainderMs=activeDelta-activeDeltaMs
+        activeElapsedMs+=activeDeltaMs
+        hazardNowMs+=activeDeltaMs
+        val elapsedSeconds = activeElapsedMs / 1_000.0
         val hazardNow=hazardNowMs
         val projectileInterval = (2_600.0 / (1.0 + elapsedSeconds / 32.0)).toLong().coerceAtLeast(520L)
         val explosionInterval = (7_800.0 / (1.0 + elapsedSeconds / 38.0)).toLong().coerceAtLeast(2_200L)

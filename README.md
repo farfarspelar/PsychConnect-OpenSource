@@ -8,16 +8,16 @@ PsychConnect is a free, haptic-first Android game about finding connection throu
 
 ## Project status
 
-- Android app: **0.6.7** (`versionCode` 34)
-- Server package: **0.2.10**
+- Android app: **0.6.8** (`versionCode` 35)
+- Server package: **0.2.11**
 - Minimum Android version: **Android 8.0 / API 26**
 - Status: active prototype; see [known limitations](#known-limitations)
 
 ## Game modes
 
 - **Versus / Deathmatch:** one player leads and earns points by keeping distance; the other follows and earns points by closing the gap. Heartbeat haptics, Sonar, hidden-until-revealed Decoys, alternating roles, match results, and online Versus records are implemented.
-- **Together:** cooperative challenges include **2 Player Survival**, where either player's movement advances shared hazards, and **Puzzle**, a shared checkpoint maze with escalating levels and a cumulative score.
-- **Solo Survival:** dodge increasingly frequent and faster hazards. Survival time is the score. Local top-five records are stored on-device; authenticated players can sync runs to the online Solo Survival top five.
+- **Together:** cooperative challenges include **2 Player Survival**, where either player's movement advances the shared hazards and timer, and **Puzzle**, a shared checkpoint maze with escalating levels and a cumulative score.
+- **Solo Survival:** dodge increasingly frequent and faster hazards. Both hazards and the survival timer pause while you are still; only movement-active survival time counts toward your score. Local top-five records are stored on-device; authenticated players can sync runs to the online Solo Survival top five.
 - **Harmony:** experimental, untimed haptic sandbox with multitouch, movement and rotation responses, optional shared haptics, optional shared touch trails, and experimental device-dependent palm recognition. It has no score or competitive leaderboard.
 
 Harmony palm recognition and several haptic mappings are experimental. Android touch-size and pressure readings differ by device, and palm detection is not guaranteed. Devices without useful measurements continue to use ordinary multitouch.

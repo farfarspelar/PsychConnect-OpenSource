@@ -1,5 +1,9 @@
 # Changelog
 
+## Android 0.6.8 / server 0.2.11
+
+- Solo and co-op Survival score only movement-active time. The timer and difficulty progression pause with the hazards while players are still.
+
 ## Android 0.6.7 / server 0.2.10
 
 Current prototype snapshot. This is not a signed store release.

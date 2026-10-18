@@ -26,7 +26,7 @@ function farBlastCenter(points) {
 }
 
 export function resetCoopSurvival(room,now) {
-  room.coopSurvival={startedAt:0,lastAt:now,hazardTimeMs:0,nextProjectileAt:1700,nextBlastAt:3500,
+  room.coopSurvival={startedAt:0,lastAt:now,activeElapsedMs:0,hazardTimeMs:0,nextProjectileAt:1700,nextBlastAt:3500,
     projectiles:[],blasts:[],sequence:0,finished:false,lastBroadcastAt:0,lastWaitingReadyCount:-1};
 }
 
@@ -41,14 +41,16 @@ export function updateCoopSurvival(room,now,broadcast,send) {
       if(readyCount!==state.lastWaitingReadyCount) { state.lastWaitingReadyCount=readyCount; broadcast(room,{type:'survival_duo_state',started:false,readyCount,projectiles:[],blasts:[]}); }
       return;
     }
-    state.startedAt=now; state.lastAt=now; state.hazardTimeMs=0;
+    state.startedAt=now; state.lastAt=now; state.activeElapsedMs=0; state.hazardTimeMs=0;
     broadcast(room,{type:'survival_duo_start',serverTs:now});
   }
-  const elapsed=(now-state.startedAt)/1000;
   const activeFactor=Math.max(...room.players.map(player=>now-(player.survivalMotionAt||0)>320?0:(player.survivalMotionFactor||0)),0);
   const previousHazardTime=state.hazardTimeMs;
   const dtWall=Math.min(.35,Math.max(0,(now-state.lastAt)/1000));
-  state.hazardTimeMs+=dtWall*activeFactor*1000;
+  const activeDeltaMs=dtWall*activeFactor*1000;
+  state.activeElapsedMs+=activeDeltaMs;
+  state.hazardTimeMs+=activeDeltaMs;
+  const elapsed=state.activeElapsedMs/1000;
   const hazardNow=state.hazardTimeMs;
   const projectileInterval=Math.max(520,2600/(1+elapsed/32));
   const blastInterval=Math.max(2200,7800/(1+elapsed/38));
@@ -81,13 +83,13 @@ export function updateCoopSurvival(room,now,broadcast,send) {
   }
   if(hit) {
     state.finished=true;
-    const elapsedMs=Math.max(0,Math.round(now-state.startedAt));
+    const elapsedMs=Math.max(0,Math.round(state.activeElapsedMs));
     broadcast(room,{type:'survival_duo_over',elapsedMs,level:1+Math.floor(elapsed/20)});
     return;
   }
   if(now-state.lastBroadcastAt>=90) {
     state.lastBroadcastAt=now;
-    broadcast(room,{type:'survival_duo_state',started:true,elapsedMs:Math.round(now-state.startedAt),level:1+Math.floor(elapsed/20),
+    broadcast(room,{type:'survival_duo_state',started:true,elapsedMs:Math.round(state.activeElapsedMs),level:1+Math.floor(elapsed/20),
       speedFactor,motionFactor:activeFactor,serverTs:now,projectiles:state.projectiles,
       blasts:state.blasts.map(blast=>({...blast,remainingMs:Math.max(0,blast.detonatesAt-hazardNow),
         radius:hazardNow<blast.detonatesAt?0:blast.maxRadius*clamp((hazardNow-blast.detonatesAt)/blast.durationMs,0,1),armed:hazardNow<blast.detonatesAt}))});

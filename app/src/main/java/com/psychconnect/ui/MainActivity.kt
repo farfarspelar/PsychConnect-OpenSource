@@ -165,6 +165,7 @@ class MainActivity : Activity() {
     private var puzzleMotionFactor=0.0
     private var duoSurvivalStarted=false
     private var duoSurvivalElapsedMs=0L
+    private var duoSurvivalMotionFactor=0.0
     private var duoSurvivalLevel=1
     private var duoReadyCount=0
     private var duoProjectiles=emptyList<SurvivalProjectile>()
@@ -848,6 +849,7 @@ class MainActivity : Activity() {
         duoStateAtMs=SystemClock.elapsedRealtime()
         val speedFactor=message.optDouble("speedFactor",1.0).coerceIn(1.0,2.35)
         val motionFactor=message.optDouble("motionFactor",1.0).coerceIn(0.0,1.0)
+        duoSurvivalMotionFactor=motionFactor
         val projectiles=mutableListOf<SurvivalProjectile>(); val encodedProjectiles=message.optJSONArray("projectiles")
         if(encodedProjectiles!=null) for(i in 0 until encodedProjectiles.length()) {
             val item=encodedProjectiles.optJSONObject(i)?:continue
@@ -1096,11 +1098,11 @@ class MainActivity : Activity() {
             }
             "SURVIVAL" -> {
                 text("Survival · Solo",20,0xFFFF785F.toInt(),true)
-                text("Move one finger to dodge incoming projectiles and expanding blast waves. Hazards move while you move and pause when you hold still; their pace and arrival rate rise with survival time. Your survival time is your score.",16,0xFFD1CFDC.toInt())
+                text("Move one finger to dodge incoming projectiles and expanding blast waves. Both the hazards and survival timer pause when you hold still; difficulty rises with active survival time. Your active survival time is your score.",16,0xFFD1CFDC.toInt())
             }
             "COOP_SURVIVAL" -> {
                 text("Survival · Co-op",20,0xFFFF785F.toInt(),true)
-                text("Both players face the same escalating projectiles and expanding blast waves. Hazards move when either of you moves and pause while both are still. The first player hit ends the shared run; survival time is the score.",16,0xFFD1CFDC.toInt())
+                text("Both players face the same escalating projectiles and expanding blast waves. Hazards and the shared timer pause while both are still; either player's movement advances them. The first player hit ends the run; active survival time is the score.",16,0xFFD1CFDC.toInt())
             }
             else -> {
                 text("Versus · Deathmatch",20,PURPLE,true)
@@ -1339,7 +1341,7 @@ class MainActivity : Activity() {
             "puzzle_hazards" -> if(screen=="game"&&gameMode=="PUZZLE") { puzzleScore=m.optInt("score",puzzleScore); puzzleTotalScore=m.optInt("totalScore",puzzleTotalScore); applyPuzzleHazards(m) }
             "puzzle_game_over" -> if(gameMode=="PUZZLE") finishPuzzleRun(m)
             "survival_duo_state" -> if(gameMode=="COOP_SURVIVAL") applyDuoSurvivalState(m)
-            "survival_duo_start" -> if(gameMode=="COOP_SURVIVAL") { duoSurvivalStarted=true; duoStateAtMs=SystemClock.elapsedRealtime(); if(::pad.isInitialized) pad.invalidate() }
+            "survival_duo_start" -> if(gameMode=="COOP_SURVIVAL") { duoSurvivalStarted=true; duoSurvivalMotionFactor=0.0; duoStateAtMs=SystemClock.elapsedRealtime(); if(::pad.isInitialized) pad.invalidate() }
             "survival_duo_over" -> if(gameMode=="COOP_SURVIVAL") finishDuoSurvival(m.optLong("elapsedMs",duoSurvivalElapsedMs))
             "round_end" -> { val result=m.optJSONObject("result"); updateDuelScores(m.optJSONObject("scores")); finishRound(result,m.optJSONObject("scores")) }
             "match_end" -> { matchFinished=true; showMatchResult(m.optJSONObject("scores"),m.optString("winnerId")) }
@@ -1411,11 +1413,11 @@ class MainActivity : Activity() {
         survivalRunActive=true; survivalPausedAtMs=0L; localLeader=Point(.5,.76)
         roundState.reset(); roundState.playersReady(); startRound(false)
     }
-    private fun finishSurvival(nowMs:Long) {
+    private fun finishSurvival() {
         if(!survivalRunActive || screen!="game") return
         survivalRunActive=false; roundInputGate.close(); haptics.stop(); hapticsRunning=false; if(hapticsEnabled) haptics.abilityPulse()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); ui.removeCallbacks(tick)
-        val score=(nowMs-roundStart).coerceAtLeast(0L)
+        val score=survivalEngine.elapsedMs
         val newBest=score>survivalBestMs
         survivalBestMs=maxOf(survivalBestMs,score)
         getSharedPreferences("psychconnect",MODE_PRIVATE).edit().putLong("survivalHighScoreMs",survivalBestMs).apply()
@@ -1435,7 +1437,7 @@ class MainActivity : Activity() {
     private fun startRound(local: Boolean) {
         networkPaused=false; networkPauseMessage=""; roundState.start(); samples.clear(); roundStart=SystemClock.elapsedRealtime(); if(simMode) roundInputGate.close() else roundInputGate.open(); lastSharedScoreAt=roundStart; sharedScore=0.0; previousSharedLeader=null; previousSharedFollower=null; lastPingAt=0L; lastRemoteServerTs=null; remotePositions.clear(); interpolatedRemotePoint=null; remoteHarmonyPoints.clear(); remoteHarmonyFingerSizes.clear(); remotePalmContact=false; lastAdvertisedPalm=false; palmFeedbackMode=PalmFeedbackMode.FINGER; harmonyPalmSynchronizer.reset(); localHarmonyMotion.reset(); remoteHarmonyMotion.reset(); localHarmonyRotation.reset(); remoteHarmonyRotation.reset(); harmonyGestureSequence=0L; harmonyAnchorLocal=false; harmonyAnchorRemote=false; harmonyAnchorPointer=null; haptics.resetHarmonyShape(); beatHistory.clear(); abilityEffects.clear(); togetherWaveEffects.clear(); togetherWaveCue=""; togetherWaveCueUntil=0L; abilityUsesRemaining=2; currentBpm=65.0; liveScore=0; mapper=HeartbeatMapper(HeartbeatConfig(fasterWhenClose=fasterWhenClose)); mapper.reset(); speedLimiter.reset(); remoteTouch.reset(); localActive=false; remoteActive=false; remotePoint=null; synchronizedNow=false; connectionStartedAt=0L
         puzzleLevel=0; puzzleScore=1_000; puzzleTotalScore=0; puzzleWalls=emptyList(); puzzleCheckpoints=emptyList(); puzzleStarted=false; puzzleTimerStarted=false; puzzleNeedsStart=true; puzzleHoldMs=0L; puzzleCheckpointAccepted=false
-        duoSurvivalStarted=false; duoSurvivalElapsedMs=0L; duoSurvivalLevel=1; duoReadyCount=0; duoProjectiles=emptyList(); duoBlasts=emptyList()
+        duoSurvivalStarted=false; duoSurvivalElapsedMs=0L; duoSurvivalMotionFactor=0.0; duoSurvivalLevel=1; duoReadyCount=0; duoProjectiles=emptyList(); duoBlasts=emptyList()
         if(gameMode=="SURVIVAL") { survivalEngine.reset(roundStart); survivalRunActive=true; localLeader=Point(.5,.76); survivalMotionPoint=localLeader; survivalMotionAtMs=roundStart }
         haptics.enabled=hapticsEnabled; hapticsRunning=false; screen="game"; syncMenuMusic(); window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.decorView.systemUiVisibility=(View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
@@ -1453,7 +1455,7 @@ class MainActivity : Activity() {
             survivalMotionPoint=localLeader; survivalMotionAtMs=now
             val hit=survivalEngine.advance(now,localLeader,if(::pad.isInitialized) pad.width else 0,if(::pad.isInitialized) pad.height else 0,movementFactor)
             if(::pad.isInitialized) pad.invalidate()
-            if(hit) finishSurvival(now)
+            if(hit) finishSurvival()
             return
         }
         if(gameMode=="PUZZLE"||gameMode=="COOP_SURVIVAL") {
@@ -2002,7 +2004,7 @@ class MainActivity : Activity() {
                 labels.color=0xFFFF8769.toInt(); labels.textSize=11f*d
                 c.drawText("SURVIVAL  ·  SOLO",width/2f,29f*d,labels)
                 val values=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color=0xFFFF6252.toInt(); textSize=27f*d; textAlign=android.graphics.Paint.Align.CENTER; typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.NORMAL) }
-                c.drawText(formatSurvivalTime(SystemClock.elapsedRealtime()-roundStart),width/2f,65f*d,values)
+                c.drawText(formatSurvivalTime(survivalEngine.elapsedMs),width/2f,65f*d,values)
                 labels.color=0xFFFFB16D.toInt(); labels.textSize=10f*d
                 c.drawText("THREAT LEVEL ${survivalEngine.level}",width/2f,84f*d,labels)
                 return
@@ -2011,7 +2013,7 @@ class MainActivity : Activity() {
                 labels.color=0xFFFF9B70.toInt(); labels.textSize=11f*d
                 c.drawText("SURVIVAL  ·  CO-OP",width/2f,29f*d,labels)
                 val values=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color=0xFFFF6252.toInt(); textSize=27f*d; textAlign=android.graphics.Paint.Align.CENTER; typeface=android.graphics.Typeface.create("sans-serif-black",android.graphics.Typeface.NORMAL) }
-                val elapsed=duoSurvivalElapsedMs+if(duoSurvivalStarted) (SystemClock.elapsedRealtime()-duoStateAtMs).coerceAtMost(150L) else 0L
+                val elapsed=duoSurvivalElapsedMs+if(duoSurvivalStarted) ((SystemClock.elapsedRealtime()-duoStateAtMs).coerceAtLeast(0L).coerceAtMost(150L)*duoSurvivalMotionFactor).toLong() else 0L
                 c.drawText(formatSurvivalTime(elapsed),width/2f,65f*d,values)
                 labels.color=0xFFFFB16D.toInt(); labels.textSize=10f*d
                 c.drawText(if(duoSurvivalStarted) "THREAT LEVEL $duoSurvivalLevel" else "$duoReadyCount/2 TOUCHES READY",width/2f,84f*d,labels)

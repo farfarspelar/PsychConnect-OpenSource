@@ -116,7 +116,7 @@ const score = (room) => {
     updateCoopSurvival(room,now,broadcast,send);
     if(!finished&&room.coopSurvival?.finished) {
       room.phase='finished'; room.players.forEach(player=>presence.setInMatch(player.ws,false));
-      const elapsedMs=Math.max(0,Math.round(now-(room.coopSurvival.startedAt||now)));
+      const elapsedMs=Math.max(0,Math.round(room.coopSurvival.activeElapsedMs||0));
       void saveArcadePairRun(room,'COOP_SURVIVAL',elapsedMs,1+Math.floor(elapsedMs/20_000));
     }
     return;

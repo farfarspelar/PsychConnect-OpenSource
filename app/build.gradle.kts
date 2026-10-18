@@ -12,8 +12,8 @@ android {
         applicationId = "com.psychconnect"
         minSdk = 26
         targetSdk = 35
-        versionCode = 34
-        versionName = "0.6.7"
+        versionCode = 35
+        versionName = "0.6.8"
         val supportUrl = providers.gradleProperty("psychconnectSupportUrl").orElse("https://buymeacoffee.com/farfarspelar").get().replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "SUPPORT_URL", "\"$supportUrl\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
