@@ -1,0 +1,46 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+server/node_modules/
+*.iml
+.idea/
+*.apk
+/psychconnect_animation_pack.zip
+/FarfarOS_bootanimation_bundle.zip
+/PsychConnect_blank_ui_assets.zip
+
+# Local developer and agent configuration
+.agents/
+.aws/
+.codex/
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Signing material and private certificates
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+signing.properties
+
+# Generated diagnostics and local data
+*.log
+*.hprof
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+coverage/
+test-results/
+
+# Local release audit outputs and repository backups
+/backups/
+*.bundle
+*.bundle.lock
+/gitleaks-report.*
+/secret-scan-report.*

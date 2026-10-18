@@ -1,0 +1,47 @@
+// Tunable server rules live here so balance, ranking, and request limits can be
+// changed without hunting through the networking and persistence code.
+export const SERVER_CONFIG=Object.freeze({
+  networking:Object.freeze({webSocketMaxPayloadBytes:16_384}),
+  gameplay:Object.freeze({
+    touchStaleMs:1000,minTouchStaleMs:300,
+    reconnectGraceMs:25_000,
+    leaderMaxUnitsPerSecond:0.5,minMovementElapsedMs:20,maxMovementElapsedMs:250,
+    scoreUpdateIntervalMs:250,scoreSampleMaxIntervalMs:250,finalScoreSampleIntervalMs:100,
+    scoringTimelineDelayMs:120,scoringTimelineMaxSamples:48,scoringTimelineMaxHoldMs:300,
+    syncDistance:0.06,positionRange:0.65,stabilityDeviationRange:0.25,
+    leaderMovementNoise:0.005,movementDistanceFloor:0.04,
+    movementDirectionWeight:0.6,movementMagnitudeWeight:0.4,
+    scoreWeights:Object.freeze({position:0.45,alignment:0.25,stability:0.15,motion:0.15}),
+    connectionMovementThreshold:0.001,connectionMaxStepSeconds:0.25,
+    connectionGainPerSecond:7,connectionDecayPerSecond:3.5,
+    togetherWaveIntervalMinMs:15_000,togetherWaveIntervalMaxMs:22_000,
+    togetherWaveDurationMs:4_800,togetherWaveCollisionBand:0.05,
+    togetherWaveGapHalfAngle:0.48,togetherWaveSafePoints:2,
+    togetherWaveSameGapBonus:8,togetherWaveDifferentGapBonus:3,
+    togetherWaveHitPenalty:2,
+    abilityUsesPerRound:2,sonarDurationMs:1400,decoyDurationMs:2200,
+    maxHarmonyTouches:5,harmonyConsentTimeoutMs:30_000,harmonyGestureCooldownMs:70
+  }),
+  rating:Object.freeze({initial:1000,eloK:32,repeatPairCooldownMs:24*60*60*1000}),
+  rivalry:Object.freeze({unfinishedBusinessMatches:5,nemesisMatches:10,perfectBalanceWinsPerPlayer:5,comebackAfterConsecutiveLosses:3,nemesisCategoryMinMatches:3,streakCategoryMinLength:2}),
+  leaderboard:Object.freeze({topLimit:100,nearbyCount:7}),
+  matches:Object.freeze({historyDefaultLimit:50,historyMaxLimit:100}),
+  challenges:Object.freeze({
+    lifetimeMs:120_000,
+    allowedDurationsSeconds:Object.freeze([30,45,60]),
+    defaultDurationSeconds:60,
+    allowedHalves:Object.freeze([2,4]),
+    defaultHalves:2
+  }),
+  api:Object.freeze({
+    requestBodyLimitBytes:16_384,
+    rateLimit:Object.freeze({
+      profileCreate:Object.freeze({maximum:8,windowMs:60*60_000}),
+      profileAuth:Object.freeze({maximum:10,windowMs:60_000}),
+      websocketAuth:Object.freeze({maximum:30,windowMs:60_000}),
+      general:Object.freeze({maximum:90,windowMs:60_000}),
+      maxBuckets:5000,
+      staleBucketMs:60*60_000
+    })
+  })
+});
